@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Дождь + Открытка</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: black;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* === ОБЩИЙ ЗВЁЗДНЫЙ ФОН === */
+        #starsCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* === ЭКРАНЫ === */
+        .screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.8s ease;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .screen.active {
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 20;
+        }
+
+        /* === ЭКРАН 1: ДОЖДЬ === */
+        #screenRain {
+            background: black;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .timer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16rem;
+            font-weight: 900;
+            font-family: 'Courier New', monospace;
+            color: #ff0bff;
+            text-align: center;
+            z-index: 30;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+        .timer.visible {
+            opacity: 1;
+        }
+        .big-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5rem;
+            font-weight: 900;
+            font-family: 'Courier New', monospace;
+            color: #ff0bff;
+            text-align: center;
+            z-index: 30;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+            white-space: nowrap;
+            letter-spacing: 8px;
+            text-shadow: 0 0 8px #ff0bff;
+        }
+        .big-text.visible {
+            opacity: 1;
+        }
+
+        /* === ЭКРАН 2: СТИКЕР (фон прозрачный, видны звёзды) === */
+        #screenSticker {
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .sticker-wrapper {
+            position: relative;
+            z-index: 15;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            animation: floatSticker 2s infinite ease-in-out;
+        }
+        @keyframes floatSticker {
+            0% { transform: translateY(0px); }
+            100% { transform: translateY(-15px); }
+        }
+
+        /* === ЭКРАН 3: БЕЛАЯ ОТКРЫТКА (фон прозрачный, видны звёзды) === */
+        #screenCard {
+            background: transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .text-block {
+            position: relative;
+            z-index: 15;
+            width: 80%;
+            max-width: 500px;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            padding: 15px 20px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            border: 1px solid rgba(255, 105, 180, 0.3);
+        }
+        .text-block.show {
+            opacity: 1;
+        }
+        .text-block p {
+            color: #ff99cc;
+            font-size: 1rem;
+            font-family: system-ui, sans-serif;
+        }
+        .card-wrapper {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            min-height: 400px;
+        }
+        .single-card {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 280px;
+            height: 380px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            transition: all 0.4s ease;
+            border: 2px solid #222;
+        }
+        .cover-full {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        .double-card {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+        .double-card.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        .page-left, .page-right {
+            width: 280px;
+            height: 380px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 2px solid #222;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .photo-place {
+            width: 220px;
+            height: 220px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 12px;
+            background-color: #f0f0f0;
+        }
+        .single-card.hide-cover {
+            animation: fadeOutScale 0.3s ease forwards;
+        }
+        @keyframes fadeOutScale {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; visibility: hidden; }
+        }
+        .double-card.hide-spread {
+            animation: fadeOutSpread 0.3s ease forwards;
+        }
+        @keyframes fadeOutSpread {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; visibility: hidden; }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="starsCanvas"></canvas>
+
+<!-- ЭКРАН 1: ДОЖДЬ + ТАЙМЕР + НАДПИСЬ -->
+<div id="screenRain" class="screen active">
+    <canvas id="matrixCanvas"></canvas>
+    <div id="timer" class="timer">3</div>
+    <div id="bigText" class="big-text"></div>
+</div>
+
+<!-- ЭКРАН 2: СТИКЕР -->
+<div id="screenSticker" class="screen">
+    <div class="sticker-wrapper" id="stickerContainer">
+        <img src="stk.gif" style="max-width:70%; max-height:70%; border-radius:20px;">
+    </div>
+</div>
+
+<!-- ЭКРАН 3: ОТКРЫТКА -->
+<div id="screenCard" class="screen">
+    <div class="text-block" id="textBlock">
+        <p>✨ На фотографиях тот, чей праздник отмечается)) ✨</p>
+    </div>
+    <div class="card-wrapper" id="cardWrapper"></div>
+</div>
+
+<script>
+    (function() {
+        // ==================== 0. ЗВЁЗДЫ (общий фон, работает всегда) ====================
+        const starsCanvas = document.getElementById('starsCanvas');
+        const starsCtx = starsCanvas.getContext('2d');
+        let starsW, starsH, stars = [];
+
+        function initStars() {
+            starsW = window.innerWidth;
+            starsH = window.innerHeight;
+            starsCanvas.width = starsW;
+            starsCanvas.height = starsH;
+            stars = [];
+            for (let i = 0; i < 250; i++) {
+                stars.push({
+                    x: Math.random() * starsW,
+                    y: Math.random() * starsH,
+                    radius: Math.random() * 2.5 + 1,
+                    alpha: Math.random(),
+                    alphaSpeed: 0.002 + Math.random() * 0.01,
+                    life: Math.random() * 300,
+                });
+            }
+        }
+
+        function drawStars() {
+            if (!starsW || !starsH) {
+                starsW = window.innerWidth;
+                starsH = window.innerHeight;
+                starsCanvas.width = starsW;
+                starsCanvas.height = starsH;
+                initStars();
+                return;
+            }
+            starsCtx.clearRect(0, 0, starsW, starsH);
+            for (let i = 0; i < stars.length; i++) {
+                const s = stars[i];
+                starsCtx.beginPath();
+                starsCtx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                starsCtx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
+                starsCtx.fill();
+                s.alpha += s.alphaSpeed;
+                if (s.alpha > 1) s.alpha = 0.2;
+                if (s.alpha < 0.2) s.alpha = 1;
+                s.life += 0.15;
+                if (s.life > 400) {
+                    s.life = 0;
+                    s.x = Math.random() * starsW;
+                    s.y = Math.random() * starsH;
+                    s.radius = Math.random() * 2.5 + 1;
+                    s.alpha = Math.random();
+                }
+            }
+            requestAnimationFrame(drawStars);
+        }
+
+        window.addEventListener('resize', () => setTimeout(initStars, 100));
+        initStars();
+        drawStars();
+
+        // ==================== 1. БЛОК 1: ДОЖДЬ ====================
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+        let w, h;
+        let fontSize = 14;
+        let columnGap = 10;
+        let drops = [];
+        const rainColor = '#b838b8';
+        const letters = "HAPPYBIRTHDAY".split('');
+
+        function initRain() {
+            w = window.innerWidth;
+            h = window.innerHeight;
+            canvas.width = w;
+            canvas.height = h;
+            const colsCount = Math.floor(w / columnGap) + 15;
+            drops = [];
+            for (let i = 0; i < colsCount; i++) {
+                drops.push({
+                    y: Math.random() * -h * 0.8,
+                    speed: 2.5 + Math.random() * 5,
+                });
+            }
+        }
+
+        function drawRain() {
+            if (!w || !h) {
+                w = window.innerWidth;
+                h = window.innerHeight;
+                if (w === 0 || h === 0) {
+                    requestAnimationFrame(drawRain);
+                    return;
+                }
+            }
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
+            ctx.fillRect(0, 0, w, h);
+            ctx.font = `${fontSize}px "Courier New", monospace`;
+            ctx.fillStyle = rainColor;
+            ctx.shadowBlur = 0;
+            for (let i = 0; i < drops.length; i++) {
+                const col = drops[i];
+                const x = i * columnGap;
+                const startY = Math.floor(col.y);
+                for (let line = 0; line < 20; line++) {
+                    const yPos = startY - line * fontSize;
+                    if (yPos > 0 && yPos < h + fontSize && yPos > -fontSize) {
+                        const randomIndex = Math.floor(Math.random() * letters.length);
+                        const symbol = letters[randomIndex];
+                        ctx.fillText(symbol, x, yPos);
+                    }
+                }
+                col.y += col.speed;
+                if (col.y > h + 150) col.y = -100;
+            }
+            requestAnimationFrame(drawRain);
+        }
+
+        // Таймер и надпись
+        let timerValue = 3;
+        const timerDiv = document.getElementById('timer');
+        const bigTextDiv = document.getElementById('bigText');
+        const screenRain = document.getElementById('screenRain');
+        const screenSticker = document.getElementById('screenSticker');
+        const screenCard = document.getElementById('screenCard');
+        const wordsSequence = ["HAPPY", "BIRTHDAY", "TO", "KATYA"];
+        let currentWordIndex = 0;
+
+        function typeWord(word, callback, isLastWord = false) {
+            bigTextDiv.classList.add('visible');
+            bigTextDiv.innerHTML = "";
+            let i = 0;
+            function typeNextChar() {
+                if (i < word.length) {
+                    bigTextDiv.innerHTML += word.charAt(i);
+                    i++;
+                    setTimeout(typeNextChar, 70);
+                } else {
+                    if (isLastWord) {
+                        callback(true);
+                    } else {
+                        setTimeout(() => {
+                            bigTextDiv.classList.remove('visible');
+                            setTimeout(() => callback(false), 150);
+                        }, 400);
+                    }
+                }
+            }
+            typeNextChar();
+        }
+
+        function startWordsSequence() {
+            if (currentWordIndex >= wordsSequence.length) return;
+            const isLast = (currentWordIndex === wordsSequence.length - 1);
+            typeWord(wordsSequence[currentWordIndex], (lastWordFlag) => {
+                currentWordIndex++;
+                if (lastWordFlag) {
+                    setTimeout(() => {
+                        screenRain.style.opacity = '0';
+                        setTimeout(() => {
+                            screenRain.classList.remove('active');
+                            screenSticker.classList.add('active');
+                            // Через 5 секунд переключаем на открытку
+                            setTimeout(() => {
+                                screenSticker.classList.remove('active');
+                                screenCard.classList.add('active');
+                                initCard();
+                            }, 5000);
+                        }, 800);
+                    }, 3000);
+                } else {
+                    startWordsSequence();
+                }
+            }, isLast);
+        }
+
+        function startTimer() {
+            setTimeout(() => {
+                timerDiv.classList.add('visible');
+                let remaining = timerValue;
+                timerDiv.innerText = remaining;
+                const interval = setInterval(() => {
+                    remaining--;
+                    if (remaining >= 1) timerDiv.innerText = remaining;
+                    else if (remaining === 0) timerDiv.innerText = "1";
+                    if (remaining < 0) {
+                        clearInterval(interval);
+                        setTimeout(() => {
+                            timerDiv.classList.remove('visible');
+                            startWordsSequence();
+                        }, 1000);
+                    }
+                }, 1000);
+            }, 3000);
+        }
+
+        initRain();
+        drawRain();
+        startTimer();
+
+        // ==================== 2. ОТКРЫТКА (БЛОК 3) ====================
+        // МЕСТО ДЛЯ КОДА ФОТОГРАФИЙ: замените ссылки на свои фото
+        const spreadsData = [
+            { leftImage: 'photo 1.jpg', rightImage: 'photo 2.jpg' },
+            { leftImage: 'photo 3.jpg', rightImage: 'photo 4.jpg' }
+        ];
+
+        let currentSpreadIndex = 0;
+        let isCardAnimating = false;
+        const cardWrapper = document.getElementById('cardWrapper');
+        const textBlockCard = document.getElementById('textBlock');
+        let hasShownCardText = false;
+
+        function showCardText() {
+            if (!hasShownCardText) {
+                hasShownCardText = true;
+                textBlockCard.classList.add('show');
+            }
+        }
+
+        function updateSpread(index) {
+            const leftPage = document.getElementById('leftPage');
+            const rightPage = document.getElementById('rightPage');
+            if (leftPage && rightPage && spreadsData[index]) {
+                leftPage.querySelector('.photo-place').style.backgroundImage = `url('${spreadsData[index].leftImage}')`;
+                rightPage.querySelector('.photo-place').style.backgroundImage = `url('${spreadsData[index].rightImage}')`;
+            }
+        }
+
+        function setupSpreadHandlers() {
+            const doubleCard = document.getElementById('doubleCard');
+            if (!doubleCard) return;
+            let touchStartX = 0;
+            doubleCard.addEventListener('touchstart', (e) => {
+                if (isCardAnimating) return;
+                touchStartX = e.touches[0].clientX;
+            });
+            doubleCard.addEventListener('touchend', (e) => {
+                if (isCardAnimating) return;
+                const diff = e.changedTouches[0].clientX - touchStartX;
+                if (Math.abs(diff) > 40 && diff < 0 && currentSpreadIndex < spreadsData.length - 1) {
+                    isCardAnimating = true;
+                    doubleCard.classList.add('hide-spread');
+                    setTimeout(() => {
+                        currentSpreadIndex++;
+                        updateSpread(currentSpreadIndex);
+                        doubleCard.classList.remove('hide-spread');
+                        isCardAnimating = false;
+                        showCardText();
+                    }, 300);
+                } else if (Math.abs(diff) > 40 && diff > 0 && currentSpreadIndex > 0) {
+                    isCardAnimating = true;
+                    doubleCard.classList.add('hide-spread');
+                    setTimeout(() => {
+                        currentSpreadIndex--;
+                        updateSpread(currentSpreadIndex);
+                        doubleCard.classList.remove('hide-spread');
+                        isCardAnimating = false;
+                    }, 300);
+                } else if (Math.abs(diff) > 40 && diff < 0 && currentSpreadIndex === spreadsData.length - 1) {
+                    isCardAnimating = true;
+                    doubleCard.classList.add('hide-spread');
+                    setTimeout(() => {
+                        cardWrapper.innerHTML = `
+                            <div class="single-card" id="backCover">
+                                <div class="cover-full" style="background-image: url('obl.png');"></div>
+                            </div>
+                        `;
+                        isCardAnimating = false;
+                    }, 300);
+                }
+            });
+        }
+
+        function initCard() {
+            cardWrapper.innerHTML = `
+                <div class="single-card" id="singleCard">
+                    <div class="cover-full" style="background-image: url('obl.png');"></div>
+                </div>
+                <div class="double-card" id="doubleCard">
+                    <div class="page-left" id="leftPage">
+                        <div class="photo-place" style="background-image: url('${spreadsData[0].leftImage}');"></div>
+                    </div>
+                    <div class="page-right" id="rightPage">
+                        <div class="photo-place" style="background-image: url('${spreadsData[0].rightImage}');"></div>
+                    </div>
+                </div>
+            `;
+
+            const singleCard = document.getElementById('singleCard');
+            const doubleCard = document.getElementById('doubleCard');
+            let touchStartX = 0;
+
+            singleCard.addEventListener('touchstart', (e) => {
+                if (isCardAnimating) return;
+                touchStartX = e.touches[0].clientX;
+            });
+            singleCard.addEventListener('touchend', (e) => {
+                if (isCardAnimating) return;
+                const diff = e.changedTouches[0].clientX - touchStartX;
+                if (Math.abs(diff) > 40 && diff < 0) {
+                    isCardAnimating = true;
+                    singleCard.classList.add('hide-cover');
+                    setTimeout(() => {
+                        doubleCard.classList.add('open');
+                        singleCard.style.display = 'none';
+                        isCardAnimating = false;
+                        showCardText();
+                        setupSpreadHandlers();
+                    }, 300);
+                }
+            });
+        }
+
+        // МЕСТО ДЛЯ КОДА СТИКЕРА: пример вставки GIF (раскомментируйте и укажите ссылку)
+        // document.querySelector('#stickerContainer').innerHTML = '<img src="ССЫЛКА_НА_GIF" style="max-width:70%; max-height:70%; border-radius:20px;">';
+    })();
+</script>
+</body>
+</html>
